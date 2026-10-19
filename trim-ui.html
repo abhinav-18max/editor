@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trim</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f6b93b' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cpath d='M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0d0e11;
+    --panel: #15171c;
+    --panel-2: #1d2027;
+    --hover: #252933;
+    --line: #262a33;
+    --line-2: #353a46;
+    --text: #ececf1;
+    --muted: #8d92a1;
+    --faint: #5f6473;
+    --accent: #f6b93b;
+    --accent-ink: #1b1404;
+    --cut: #ff5f57;
+    --ok: #34c77b;
+    --sel: var(--accent);
+    --gutter: 14px;
+    color-scheme: dark;
+  }
+  body.cut { --sel: var(--cut); }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  svg { display: block; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    height: 32px; padding: 0 12px; border-radius: 8px;
+    border: 1px solid var(--line-2); background: var(--panel-2);
+    cursor: pointer; white-space: nowrap; transition: background .12s, filter .12s;
+  }
+  .btn:hover:not(:disabled) { background: var(--hover); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.07); }
+  .btn.big { height: 40px; padding: 0 22px; font-size: 15px; }
+  .btn.small { height: 28px; padding: 0 10px; font-size: 12.5px; }
+  .btn.quiet { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.quiet:hover:not(:disabled) { color: var(--text); }
+  .btn svg { width: 14px; height: 14px; }
+  kbd {
+    font: 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 2px 5px; border-radius: 4px;
+    border: 1px solid var(--line-2); border-bottom-width: 2px;
+    color: var(--muted); background: var(--bg);
+  }
+
+  /* Header */
+  .top {
+    display: flex; align-items: center; gap: 16px;
+    height: 56px; padding: 0 20px; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; }
+  .brand svg { width: 18px; height: 18px; color: var(--accent); }
+  .file-meta { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 12px; padding-left: 16px; border-left: 1px solid var(--line); }
+  .file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .file-details { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-actions { margin-left: auto; display: flex; gap: 4px; }
+
+  /* Home */
+  .home { max-width: 680px; margin: 7vh auto 48px; padding: 0 16px; }
+  .drop {
+    text-align: center; padding: 44px 28px 36px;
+    border: 1.5px dashed var(--line-2); border-radius: 16px; background: var(--panel);
+  }
+  .drop-icon { width: 46px; height: 46px; margin: 0 auto; color: var(--accent); }
+  .drop h1 { font-size: 22px; font-weight: 650; margin: 14px 0 4px; letter-spacing: -.01em; }
+  .drop > p { color: var(--muted); margin: 0 0 22px; }
+  .path-form { display: flex; gap: 8px; max-width: 440px; margin: 20px auto 0; }
+  .path-form input {
+    flex: 1; min-width: 0; height: 32px; padding: 0 10px; border-radius: 8px;
+    border: 1px solid var(--line-2); background: var(--bg);
+  }
+  .error { color: var(--cut); margin: 16px 0 0; }
+  .recent h2 {
+    margin: 30px 0 8px; font-size: 11.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  }
+  .recent ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .recent li + li { border-top: 1px solid var(--line); }
+  .recent button {
+    width: 100%; display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center;
+    padding: 10px 14px; border: 0; background: var(--panel); text-align: left; cursor: pointer;
+  }
+  .recent button:hover { background: var(--panel-2); }
+  .r-icon { width: 30px; height: 30px; border-radius: 7px; background: var(--panel-2); display: grid; place-items: center; color: var(--muted); }
+  .r-icon svg { width: 15px; height: 15px; }
+  .r-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r-sub, .r-when { color: var(--muted); font-size: 12px; }
+  .r-when { white-space: nowrap; }
+
+  /* Editor */
+  .editor { max-width: 1120px; margin: 0 auto; padding: 18px 20px 48px; }
+  .stage {
+    position: relative; height: min(46vh, 540px); min-height: 200px;
+    background: #000; border-radius: 10px; overflow: hidden;
+    display: grid; place-items: center;
+  }
+  .stage video, .stage .frame { width: 100%; height: 100%; object-fit: contain; }
+  .stage .frame { position: absolute; inset: 0; }
+  .stage.audio { height: 140px; min-height: 0; background: var(--panel); border: 1px solid var(--line); }
+  .audio-card { display: flex; align-items: center; gap: 16px; max-width: 90%; }
+  .audio-badge { width: 56px; height: 56px; border-radius: 14px; background: var(--panel-2); display: grid; place-items: center; color: var(--accent); flex: none; }
+  .audio-badge svg { width: 26px; height: 26px; }
+  .audio-name { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .audio-sub { color: var(--muted); font-size: 12.5px; }
+  .stage-note {
+    position: absolute; left: 12px; right: 12px; bottom: 12px;
+    padding: 8px 12px; border-radius: 8px; font-size: 12.5px;
+    background: rgba(21, 23, 28, .92); border: 1px solid var(--line-2); color: var(--muted);
+  }
+
+  .transport { display: flex; align-items: center; gap: 14px; margin: 14px 0 12px; }
+  .play {
+    width: 40px; height: 40px; border-radius: 50%; border: 0; flex: none;
+    background: var(--text); color: var(--bg); display: grid; place-items: center; cursor: pointer;
+  }
+  .play:disabled { opacity: .35; cursor: default; }
+  .play svg { width: 17px; height: 17px; fill: currentColor; }
+  .play .i-pause, .play.playing .i-play { display: none; }
+  .play.playing .i-pause { display: block; }
+  .clock { font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .clock .dur { color: var(--faint); }
+  .spacer { flex: 1; }
+  .hints { display: flex; gap: 14px; color: var(--faint); font-size: 12px; white-space: nowrap; }
+
+  /* Timeline */
+  .timeline { position: relative; padding: 0 var(--gutter); user-select: none; -webkit-user-select: none; touch-action: none; }
+  .track { position: relative; height: 92px; border-radius: 6px; background: var(--panel); cursor: pointer; }
+  .track.audio-only { height: 92px; }
+  .track.no-audio { height: 64px; }
+  .strip {
+    position: absolute; left: 0; right: 0; top: 0; height: 64px;
+    display: flex; overflow: hidden; border-radius: 6px 6px 0 0; background: #0a0b0d;
+  }
+  .track.no-audio .strip { border-radius: 6px; }
+  .track.audio-only .strip { display: none; }
+  .strip img { flex: 1 1 0; min-width: 0; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+  .strip img.loaded { opacity: 1; }
+  .wave { position: absolute; left: 0; bottom: 0; width: 100%; height: 28px; }
+  .track.audio-only .wave { height: 100%; }
+  .track.no-audio .wave { display: none; }
+  .track.wave-loading .wave { background: linear-gradient(90deg, transparent, rgba(255,255,255,.04), transparent) 0 0 / 40% 100% no-repeat; animation: sweep 1.2s linear infinite; }
+  @keyframes sweep { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+
+  .shade { position: absolute; top: 0; bottom: 0; background: rgba(8, 9, 11, .7); pointer-events: none; }
+  .shade.l { left: 0; border-radius: 6px 0 0 6px; }
+  .shade.r { right: 0; border-radius: 0 6px 6px 0; }
+  body.cut .shade { display: none; }
+  .sel {
+    position: absolute; top: -3px; bottom: -3px;
+    border-top: 3px solid var(--sel); border-bottom: 3px solid var(--sel);
+    cursor: grab;
+  }
+  body.cut .sel { background: repeating-linear-gradient(135deg, rgba(255, 95, 87, .34) 0 7px, rgba(255, 95, 87, .14) 7px 14px); }
+  .handle {
+    position: absolute; top: -3px; bottom: -3px; width: var(--gutter);
+    background: var(--sel); cursor: ew-resize; z-index: 2;
+    display: grid; place-items: center;
+  }
+  .handle::after { content: ""; width: 3px; height: 24px; border-radius: 2px; background: rgba(0, 0, 0, .4); }
+  .handle.s { transform: translateX(-100%); border-radius: 7px 0 0 7px; }
+  .handle.e { border-radius: 0 7px 7px 0; }
+  .playhead {
+    position: absolute; top: -9px; bottom: -4px; width: 2px; margin-left: -1px;
+    background: #fff; pointer-events: none; z-index: 3; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+  }
+  .playhead::before {
+    content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top: 7px solid #fff; border-bottom: 0;
+  }
+  .tip {
+    position: absolute; top: -34px; transform: translateX(-50%); z-index: 4;
+    padding: 2px 7px; border-radius: 5px; font-size: 11.5px; white-space: nowrap; pointer-events: none;
+    background: var(--panel-2); border: 1px solid var(--line-2); font-variant-numeric: tabular-nums;
+  }
+  body.grabbing, body.grabbing * { cursor: grabbing !important; }
+  .ruler { position: relative; height: 24px; margin-top: 7px; color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ruler span { position: absolute; top: 5px; transform: translateX(-50%); white-space: nowrap; }
+  .ruler span::before { content: ""; position: absolute; left: 50%; top: -5px; width: 1px; height: 4px; background: var(--line-2); }
+
+  /* Controls */
+  .panel { margin-top: 16px; padding: 18px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+  .times { display: grid; grid-template-columns: auto auto 1fr; gap: 16px 32px; align-items: end; }
+  .field > label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+  .time-row { display: flex; align-items: center; gap: 8px; }
+  .time-box {
+    display: flex; height: 36px; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--line-2); background: var(--bg);
+  }
+  .time-box:focus-within { border-color: var(--sel); }
+  .time-box.bad { border-color: var(--cut); animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .time-box input { width: 104px; border: 0; background: transparent; text-align: center; font-size: 15px; outline: none; font-variant-numeric: tabular-nums; }
+  .time-box button { width: 28px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; }
+  .time-box button:hover { background: var(--panel-2); color: var(--text); }
+  .readout { justify-self: end; text-align: right; }
+  .readout .big { font-size: 24px; font-weight: 600; line-height: 36px; }
+  body.cut .readout .big { color: var(--cut); }
+
+  .opts {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px;
+    margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line);
+  }
+  .seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-2); }
+  .seg button {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+    padding: 6px 14px 7px; border: 0; border-radius: 7px; background: transparent;
+    color: var(--muted); cursor: pointer; text-align: left; line-height: 1.25;
+  }
+  .seg button span { display: flex; align-items: center; gap: 7px; font-weight: 550; }
+  .seg button span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--line-2); }
+  .seg button small { font-size: 11.5px; color: var(--faint); padding-left: 15px; }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .seg button[data-mode="keep"][aria-pressed="true"] span::before { background: var(--accent); }
+  .seg button[data-mode="cut"][aria-pressed="true"] span::before { background: var(--cut); }
+  .select-field { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .select-field select {
+    height: 34px; padding: 0 10px; border-radius: 8px; color: var(--text);
+    border: 1px solid var(--line-2); background: var(--bg);
+  }
+  .check { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+  .check input { margin: 3px 0 0; accent-color: var(--accent); width: 15px; height: 15px; }
+  .check small { display: block; color: var(--muted); font-size: 12px; }
+  .check.off { opacity: .45; cursor: default; }
+
+  .export { display: flex; align-items: center; gap: 20px; margin-top: 18px; }
+  .summary { flex: 1; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+  .summary b { color: var(--text); font-weight: 600; }
+
+  .job {
+    display: flex; align-items: center; gap: 14px; margin-top: 16px;
+    padding: 12px 14px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line-2);
+    scroll-margin-bottom: 28px;
+  }
+  .job-icon { width: 24px; height: 24px; flex: none; display: grid; place-items: center; }
+  .job-icon svg { width: 22px; height: 22px; }
+  .job.done .job-icon { color: var(--ok); }
+  .job.error .job-icon { color: var(--cut); }
+  .job.cancelled .job-icon { color: var(--muted); }
+  .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--line-2); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .job-main { flex: 1; min-width: 0; }
+  .job-title { font-weight: 600; overflow-wrap: anywhere; }
+  .job-sub { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+  .bar { height: 5px; margin-top: 8px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .job-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+  /* Overlays */
+  .drop-overlay {
+    position: fixed; inset: 12px; z-index: 50; display: none; place-items: center;
+    border: 2px dashed var(--accent); border-radius: 18px; background: rgba(13, 14, 17, .86);
+    font-size: 18px; font-weight: 600; pointer-events: none;
+  }
+  body.dragging .drop-overlay { display: grid; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; z-index: 60; max-width: min(560px, calc(100vw - 32px));
+    padding: 10px 16px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line-2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  body.busy { cursor: progress; }
+
+  @media (max-width: 860px) {
+    .hints { display: none; }
+    .times { grid-template-columns: 1fr; }
+    .readout { justify-self: start; text-align: left; }
+    .file-details { display: none; }
+  }
+  @media (max-width: 560px) {
+    .top { padding: 0 16px; }
+    .editor { padding: 14px 16px 40px; }
+    .stage:not(.audio) { height: 60vw; min-height: 160px; }
+    .export { flex-direction: column; align-items: stretch; }
+    .job { flex-wrap: wrap; }
+    .seg button small { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></svg>
+    <span>Trim</span>
+  </div>
+  <div class="file-meta" id="fileMeta" hidden>
+    <span class="file-name" id="fileName"></span>
+    <span class="file-details" id="fileDetails"></span>
+  </div>
+  <div class="top-actions" id="topActions" hidden>
+    <button class="btn" id="openBtn" type="button">Open file…</button>
+    <button class="btn quiet" id="closeBtn" type="button" title="Close file" aria-label="Close file">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="home" id="home" hidden>
+    <div class="drop">
+      <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></svg>
+      <h1>Trim or cut a video or audio file</h1>
+      <p>Drop a file anywhere on this page, or choose one.</p>
+      <button class="btn primary big" id="pickBtn" type="button">Choose file…</button>
+      <form class="path-form" id="pathForm">
+        <input id="pathInput" type="text" placeholder="…or paste a file path" spellcheck="false" autocomplete="off">
+        <button class="btn" type="submit">Open</button>
+      </form>
+      <p class="error" id="homeError" hidden></p>
+    </div>
+    <div class="recent" id="recent" hidden>
+      <h2>Recent files</h2>
+      <ul id="recentList"></ul>
+    </div>
+  </section>
+
+  <section class="editor" id="editor" hidden>
+    <div class="stage" id="stage">
+      <video id="video" playsinline preload="auto"></video>
+      <audio id="audio" preload="auto"></audio>
+      <img class="frame" id="frame" alt="" hidden>
+      <div class="audio-card" id="audioCard" hidden>
+        <div class="audio-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div style="min-width:0">
+          <div class="audio-name" id="audioName"></div>
+          <div class="audio-sub" id="audioSub"></div>
+        </div>
+      </div>
+      <div class="stage-note" id="stageNote" hidden></div>
+    </div>
+
+    <div class="transport">
+      <button class="play" id="playBtn" type="button" title="Play / pause (Space)" aria-label="Play or pause">
+        <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+        <svg class="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1"/><rect x="13.8" y="5" width="4.2" height="14" rx="1"/></svg>
+      </button>
+      <div class="clock"><span id="curTime">0:00.00</span><span class="dur"> / <span id="durTime">0:00.00</span></span></div>
+      <button class="btn small" id="playSelBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h2v14H3zM19 5h2v14h-2zM9 7.5v9l7-4.5z"/></svg>
+        <span id="playSelLabel">Play selection</span>
+      </button>
+      <div class="spacer"></div>
+      <div class="hints">
+        <span><kbd>Space</kbd> play</span>
+        <span><kbd>I</kbd> <kbd>O</kbd> set start / end</span>
+        <span><kbd>←</kbd><kbd>→</kbd> 1 s</span>
+        <span><kbd>⇧</kbd> + <kbd>←</kbd><kbd>→</kbd> <span id="stepHint">1 frame</span></span>
+      </div>
+    </div>
+
+    <div class="timeline" id="timeline">
+      <div class="track" id="track">
+        <div class="strip" id="strip"></div>
+        <canvas class="wave" id="wave"></canvas>
+        <div class="shade l" id="shadeL"></div>
+        <div class="shade r" id="shadeR"></div>
+        <div class="sel" id="sel"></div>
+        <div class="handle s" id="hStart" title="Drag to set the start"></div>
+        <div class="handle e" id="hEnd" title="Drag to set the end"></div>
+        <div class="playhead" id="playhead"></div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="ruler" id="ruler"></div>
+    </div>
+
+    <div class="panel">
+      <div class="times">
+        <div class="field">
+          <label for="startInput">Start</label>
+          <div class="time-row">
+            <div class="time-box">
+              <button type="button" data-nudge="start" data-dir="-1" title="Earlier (Shift: 1 s)" aria-label="Start earlier">‹</button>
+              <input id="startInput" inputmode="decimal" spellcheck="false" autocomplete="off">
+              <button type="button" data-nudge="start" data-dir="1" title="Later (Shift: 1 s)" aria-label="Start later">›</button>
+            </div>
+            <button class="btn small" id="setStartBtn" type="button" title="Set the start to the playhead">Set to playhead <kbd>I</kbd></button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="endInput">End</label>
+          <div class="time-row">
+            <div class="time-box">
+              <button type="button" data-nudge="end" data-dir="-1" title="Earlier (Shift: 1 s)" aria-label="End earlier">‹</button>
+              <input id="endInput" inputmode="decimal" spellcheck="false" autocomplete="off">
+              <button type="button" data-nudge="end" data-dir="1" title="Later (Shift: 1 s)" aria-label="End later">›</button>
+            </div>
+            <button class="btn small" id="setEndBtn" type="button" title="Set the end to the playhead">Set to playhead <kbd>O</kbd></button>
+          </div>
+        </div>
+        <div class="field readout">
+          <label id="selLabel">Keeping</label>
+          <div class="big num" id="selLen">0:00.00</div>
+        </div>
+      </div>
+
+      <div class="opts">
+        <div class="seg" id="modeSeg" role="group" aria-label="What to do with the selection">
+          <button type="button" data-mode="keep" aria-pressed="true"><span>Keep selection</span><small>Trim to just this part</small></button>
+          <button type="button" data-mode="cut" aria-pressed="false"><span>Remove selection</span><small>Cut it out, join the rest</small></button>
+        </div>
+        <label class="select-field">Format <select id="formatSel"></select></label>
+        <label class="check" id="fastWrap">
+          <input type="checkbox" id="fastChk">
+          <span>Fast export<small id="fastNote">No re-encoding, but cuts snap to the nearest keyframe</small></span>
+        </label>
+      </div>
+
+      <div class="export">
+        <div class="summary" id="summary"></div>
+        <button class="btn primary big" id="exportBtn" type="button">Export</button>
+      </div>
+
+      <div class="job" id="job" hidden>
+        <div class="job-icon" id="jobIcon"></div>
+        <div class="job-main">
+          <div class="job-title" id="jobTitle"></div>
+          <div class="job-sub" id="jobSub"></div>
+          <div class="bar" id="jobBar"><i id="jobFill"></i></div>
+        </div>
+        <div class="job-actions" id="jobActions"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="drop-overlay">Drop to open</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const ICONS = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>',
+  film: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/></svg>',
+  music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+};
+const AUDIO_EXTS = new Set(['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'aif', 'aiff']);
+const CODECS = { h264: 'H.264', hevc: 'HEVC', vp9: 'VP9', vp8: 'VP8', av1: 'AV1', mpeg4: 'MPEG-4', prores: 'ProRes',
+                 aac: 'AAC', mp3: 'MP3', opus: 'Opus', vorbis: 'Vorbis', flac: 'FLAC', alac: 'ALAC' };
+
+// Everything about the open file and the editor.
+const S = {
+  file: null, dur: 0, step: 0.1,
+  start: 0, end: 0, mode: 'keep', format: '',
+  time: 0, lastT: 0,                 // playhead, and where it was on the previous frame
+  media: null, playable: false,      // the <video>/<audio> element, and whether the browser can play it
+  frames: false,                     // show still frames from the server instead of the video
+  pendingSeek: null, playStop: null, // queued seek while one is running; where "Play selection" stops
+  peaks: null, job: null, exporting: false,
+};
+
+// --- Helpers -----------------------------------------------------------------
+
+async function api(path, body) {
+  const opts = body === undefined ? {} :
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  let res;
+  try { res = await fetch(path, opts); }
+  catch { throw new Error('Lost contact with trim-ui.py. Is it still running?'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+function fmt(t, long = S.dur >= 3600) {
+  const cs = Math.round(Math.max(0, t) * 100);
+  const h = Math.floor(cs / 360000), m = Math.floor(cs / 6000) % 60;
+  const s = String(Math.floor(cs / 100) % 60).padStart(2, '0') + '.' + String(cs % 100).padStart(2, '0');
+  return long ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${h * 60 + m}:${s}`;
+}
+const fmtLen = (t) => fmt(t, t >= 3600);
+
+// "90", "1:30", "1:02:03.5" -> seconds, or null
+function parseTime(str) {
+  const parts = str.trim().split(':');
+  if (parts.length > 3 || !parts.every((p, i) => (i === parts.length - 1 ? /^\d+(\.\d+)?$/ : /^\d+$/).test(p))) return null;
+  return parts.reduce((acc, p) => acc * 60 + parseFloat(p), 0);
+}
+
+function fmtBytes(n) {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
+  return `${n.toFixed(i && n < 10 ? 1 : 0)} ${units[i]}`;
+}
+
+function ago(ts) {
+  const s = Date.now() / 1000 - ts;
+  if (s < 90) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  if (s < 86400 * 30) return `${Math.round(s / 86400)} d ago`;
+  return new Date(ts * 1000).toLocaleDateString();
+}
+
+const codecName = (c) => !c ? '' : c.startsWith('pcm_') ? 'PCM' : CODECS[c] || c.toUpperCase();
+
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4500);
+}
+
+function showError(msg) {
+  if (!$('home').hidden) { $('homeError').textContent = msg; $('homeError').hidden = false; }
+  else toast(msg);
+}
+
+// --- Opening files -----------------------------------------------------------
+
+async function openWith(request) {
+  document.body.classList.add('busy');
+  $('pickBtn').disabled = $('openBtn').disabled = true;
+  $('homeError').hidden = true;
+  try {
+    const info = await request();
+    if (info && info.id) loadFile(info);
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    document.body.classList.remove('busy');
+    $('pickBtn').disabled = $('openBtn').disabled = false;
+  }
+}
+const pick = () => openWith(() => api('/api/pick', {}));
+const openPath = (path) => openWith(() => api('/api/open', { path }));
+
+function showHome() {
+  stopMedia();
+  S.file = null;
+  S.job = null;
+  document.title = 'Trim';
+  history.replaceState(null, '', location.pathname);
+  $('editor').hidden = true;
+  $('fileMeta').hidden = $('topActions').hidden = true;
+  $('home').hidden = false;
+  $('homeError').hidden = true;
+  loadRecent();
+}
+
+async function loadRecent() {
+  let items = [];
+  try { ({ items } = await api('/api/recent')); } catch { /* the list is optional */ }
+  const list = $('recentList');
+  list.textContent = '';
+  for (const item of items) {
+    const ext = item.name.split('.').pop().toLowerCase();
+    const btn = el('button');
+    btn.type = 'button';
+    btn.title = item.path;
+    const icon = el('span', 'r-icon');
+    icon.innerHTML = AUDIO_EXTS.has(ext) ? ICONS.music : ICONS.film;
+    const text = el('span');
+    text.style.minWidth = '0';
+    text.append(el('div', 'r-name', item.name), el('div', 'r-sub', `${item.dir} · ${fmtBytes(item.size)}`));
+    btn.append(icon, text, el('span', 'r-when', ago(item.mtime)));
+    btn.addEventListener('click', () => openPath(item.path));
+    const li = el('li');
+    li.append(btn);
+    list.append(li);
+  }
+  $('recent').hidden = !items.length;
+}
+
+function describe(info) {
+  const bits = [];
+  if (info.video) {
+    bits.push(`${info.video.width}×${info.video.height}`, codecName(info.video.codec));
+    if (info.video.fps) bits.push(`${+info.video.fps.toFixed(2)} fps`);
+  } else if (info.audio) {
+    bits.push(codecName(info.audio.codec));
+    if (info.audio.sample_rate) bits.push(`${+(info.audio.sample_rate / 1000).toFixed(1)} kHz`);
+    if (info.audio.channels) bits.push(info.audio.channels === 1 ? 'mono' : info.audio.channels === 2 ? 'stereo' : `${info.audio.channels} ch`);
+  }
+  bits.push(fmtLen(info.duration), fmtBytes(info.size));
+  return bits.filter(Boolean).join(' · ');
+}
+
+function loadFile(info) {
+  stopMedia();
+  Object.assign(S, {
+    file: info, dur: info.duration, start: 0, end: info.duration, time: 0, lastT: 0,
+    step: info.video && info.video.fps ? 1 / info.video.fps : 0.1,
+    format: '', peaks: null, job: null, exporting: false, playStop: null,
+  });
+  history.replaceState(null, '', `?file=${info.id}`);
+  document.title = `${info.name} · Trim`;
+
+  $('fileName').textContent = info.name;
+  $('fileName').title = `${info.dir}/${info.name}`;
+  $('fileDetails').textContent = describe(info);
+  $('audioName').textContent = info.name;
+  $('audioSub').textContent = describe(info);
+  $('durTime').textContent = fmt(info.duration);
+  $('stepHint').textContent = info.video ? '1 frame' : '0.1 s';
+  $('home').hidden = true;
+  $('editor').hidden = false;
+  $('fileMeta').hidden = $('topActions').hidden = false;
+  $('fastChk').checked = false;
+
+  buildFormats(info);
+  renderJob(null);
+  setMode('keep');
+  setupMedia(info);
+  layoutTimeline();
+  loadWaveform(info);
+}
+
+// --- Playback ----------------------------------------------------------------
+
+function stopMedia() {
+  S.media = null;
+  S.playable = S.frames = false;
+  S.pendingSeek = null;
+  for (const m of [$('video'), $('audio')]) {
+    m.pause();
+    m.removeAttribute('src');
+    m.load();
+  }
+}
+
+function setupMedia(info) {
+  const isVideo = !!info.video;
+  $('stage').classList.toggle('audio', !isVideo);
+  $('video').hidden = !isVideo;
+  $('audioCard').hidden = isVideo;
+  $('frame').hidden = true;
+  $('frame').removeAttribute('src');
+  $('stageNote').hidden = true;
+  setPlayable(false);
+  S.media = isVideo ? $('video') : $('audio');
+  S.media.src = `/media/${info.id}`;
+  S.media.load();
+}
+
+function setPlayable(on) {
+  S.playable = on;
+  $('playBtn').disabled = $('playSelBtn').disabled = !on;
+  syncPlayBtn();
+}
+
+function stageNote(msg) {
+  $('stageNote').textContent = msg;
+  $('stageNote').hidden = false;
+}
+
+// Videos the browser can't decode get still frames rendered by ffmpeg instead.
+function useFrames(msg) {
+  S.frames = true;
+  $('video').hidden = true;
+  $('frame').hidden = false;
+  stageNote(msg);
+  loadFrame(S.time);
+}
+
+let frameBusy = false, frameWanted = null, frameShown = -1;
+function loadFrame(t) {
+  frameWanted = t;
+  if (frameBusy || !S.file) return;
+  frameBusy = true;
+  const id = S.file.id, img = new Image();
+  const h = Math.min(1080, Math.round($('stage').clientHeight * (devicePixelRatio || 1)));
+  img.onload = img.onerror = () => {
+    frameBusy = false;
+    if (!S.file || S.file.id !== id) return;
+    if (img.naturalWidth) $('frame').src = img.src;
+    frameShown = t;
+    if (frameWanted !== t) loadFrame(frameWanted);
+  };
+  img.src = `/api/frame/${id}?t=${t.toFixed(2)}&h=${h}`;
+}
+
+for (const m of [$('video'), $('audio')]) {
+  const current = () => S.file && m === S.media && m.currentSrc.endsWith(`/media/${S.file.id}`);
+  m.addEventListener('loadedmetadata', () => {
+    if (!current()) return;
+    setPlayable(true);
+    if (m === $('video') && !m.videoWidth) {
+      useFrames('Your browser can play this file’s sound but not its picture, so you’re seeing still frames. Export works as normal.');
+    }
+    if (S.time) m.currentTime = S.time;
+  });
+  m.addEventListener('error', () => {
+    if (!current()) return;
+    setPlayable(false);
+    if (S.file.video) useFrames('Your browser can’t play this format, so you’re seeing still frames instead. Export works as normal.');
+    else stageNote('Your browser can’t play this format, so there’s no playback. You can still set times and export.');
+  });
+  m.addEventListener('seeked', () => {
+    if (m !== S.media || S.pendingSeek == null) return;
+    const t = S.pendingSeek;
+    S.pendingSeek = null;
+    m.currentTime = t;
+  });
+  for (const ev of ['play', 'pause', 'ended']) m.addEventListener(ev, syncPlayBtn);
+}
+
+function syncPlayBtn() {
+  const playing = !!(S.media && S.playable && !S.media.paused);
+  $('playBtn').classList.toggle('playing', playing);
+  if (!playing) S.playStop = null;
+}
+
+function seekTo(t) {
+  t = clamp(t, 0, S.dur);
+  S.time = S.lastT = t;
+  renderPlayhead();
+  const m = S.media;
+  if (m && S.playable) {
+    if (m.seeking) S.pendingSeek = t;  // let the current seek finish first so scrubbing stays smooth
+    else m.currentTime = t;
+  }
+  if (S.frames) loadFrame(t);
+}
+
+function play() {
+  S.media.play().catch((e) => toast(`Couldn’t play: ${e.message}`));
+}
+
+function togglePlay() {
+  if (!S.playable) return;
+  if (!S.media.paused) { S.media.pause(); return; }
+  if (S.time >= S.dur - 0.05) seekTo(0);
+  S.playStop = null;
+  play();
+}
+
+// Keep mode: play just the selection. Cut mode: play across the cut to hear/see the join.
+function playSelection() {
+  if (!S.playable) return;
+  if (S.mode === 'keep') { seekTo(S.start); play(); S.playStop = S.end; }
+  else { seekTo(Math.max(0, S.start - 3)); play(); S.playStop = Math.min(S.dur, S.end + 3); }
+}
+
+function tick() {
+  const m = S.media;
+  if (m && S.playable && !m.paused && !m.seeking) {
+    let t = m.currentTime;
+    // In cut mode, skip over the part that will be removed.
+    if (S.mode === 'cut' && S.lastT <= S.start + 0.001 && t >= S.start && t < S.end) {
+      m.currentTime = t = S.end;
+    }
+    if (S.playStop != null && t >= S.playStop) m.pause();
+    S.time = S.lastT = t;
+    renderPlayhead();
+    if (S.frames && Math.abs(t - frameShown) > 0.5) loadFrame(t);
+  }
+  requestAnimationFrame(tick);
+}
+
+// --- Selection ---------------------------------------------------------------
+
+const minGap = () => Math.max(S.step, 0.05);
+
+function setStart(t) { S.start = clamp(t, 0, S.end - minGap()); renderSel(); }
+function setEnd(t) { S.end = clamp(t, S.start + minGap(), S.dur); renderSel(); }
+
+// "Set to playhead": if the playhead is on the wrong side of the other handle, move that one out of the way.
+function startAt(t) { if (t > S.end - minGap()) S.end = S.dur; setStart(t); }
+function endAt(t) { if (t < S.start + minGap()) S.start = 0; setEnd(t); }
+
+function nudge(which, d) {
+  if (which === 'start') setStart(S.start + d); else setEnd(S.end + d);
+  seekTo(S[which]);
+}
+
+const pct = (t) => `${(t / S.dur) * 100}%`;
+const editing = { start: false, end: false };
+
+function renderSel() {
+  if (!S.file) return;
+  $('sel').style.left = pct(S.start);
+  $('sel').style.width = pct(S.end - S.start);
+  $('shadeL').style.width = pct(S.start);
+  $('shadeR').style.left = pct(S.end);
+  $('hStart').style.left = pct(S.start);
+  $('hEnd').style.left = pct(S.end);
+  if (!editing.start) $('startInput').value = fmt(S.start);
+  if (!editing.end) $('endInput').value = fmt(S.end);
+  $('selLen').textContent = fmtLen(S.end - S.start);
+  renderSummary();
+}
+
+function renderPlayhead() {
+  if (!S.file) return;
+  $('playhead').style.left = pct(S.time);
+  $('curTime').textContent = fmt(S.time);
+}
+
+function setMode(mode) {
+  S.mode = mode;
+  document.body.classList.toggle('cut', mode === 'cut');
+  for (const b of document.querySelectorAll('#modeSeg button')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+  $('playSelLabel').textContent = mode === 'cut' ? 'Preview cut' : 'Play selection';
+  $('playSelBtn').title = mode === 'cut' ? 'Play across the cut, skipping the removed part' : 'Play just the selected part';
+  $('selLabel').textContent = mode === 'cut' ? 'Removing' : 'Keeping';
+  renderSel();
+}
+
+function buildFormats(info) {
+  const sel = $('formatSel');
+  sel.textContent = '';
+  const add = (value, label) => { const o = el('option', null, label); o.value = value; sel.append(o); };
+  add('', `Same as original (.${info.ext})`);
+  const options = [];
+  if (info.video) options.push(['mp4', 'MP4'], ['mov', 'MOV'], ['mkv', 'MKV'], ['webm', 'WebM']);
+  if (info.audio) options.push(['mp3', 'MP3'], ['m4a', 'M4A (AAC)'], ['wav', 'WAV'], ['flac', 'FLAC']);
+  for (const [value, label] of options) {
+    if (value === info.ext.toLowerCase()) continue;
+    add(value, info.video && AUDIO_EXTS.has(value) ? `${label}, sound only` : label);
+  }
+  sel.value = '';
+}
+
+// Fast export only matters for video kept in its own format; anything else is re-encoded anyway.
+const fastAllowed = () => !!S.file.video && !S.format;
+
+function renderSummary() {
+  const info = S.file;
+  const fastWrap = $('fastWrap');
+  fastWrap.hidden = !info.video;
+  fastWrap.classList.toggle('off', !fastAllowed());
+  $('fastChk').disabled = !fastAllowed();
+  $('fastNote').textContent = fastAllowed()
+    ? 'No re-encoding, but cuts snap to the nearest keyframe'
+    : 'Not available when changing format';
+
+  const len = S.end - S.start;
+  const whole = S.start <= 0.001 && S.end >= S.dur - 0.001;
+  const parts = [];
+  let blocked = false;
+  if (whole && S.mode === 'cut') {
+    parts.push('The selection covers the whole file, so nothing would be left. Drag the handles to mark the part to remove.');
+    blocked = true;
+  } else if (whole && !S.format) {
+    parts.push('Drag the handles on the timeline (or press ', { b: 'I' }, ' and ', { b: 'O' }, ' while playing) to choose the part to keep.');
+    blocked = true;
+  } else {
+    const label = S.mode === 'cut' ? 'cut' : 'trimmed';
+    const outLen = S.mode === 'cut' ? S.dur - len : len;
+    parts.push('Result is ', { b: fmtLen(outLen) }, ' long, saved next to the original as ',
+               { b: `${info.stem} (${label}).${S.format || info.ext}` });
+  }
+  const box = $('summary');
+  box.textContent = '';
+  for (const p of parts) box.append(typeof p === 'string' ? p : el('b', null, p.b));
+  $('exportBtn').disabled = blocked || S.exporting;
+}
+
+// --- Timeline ----------------------------------------------------------------
+
+function layoutTimeline() {
+  const info = S.file;
+  if (!info) return;
+  $('track').classList.toggle('audio-only', !info.video);
+  $('track').classList.toggle('no-audio', !info.audio);
+  buildStrip();
+  drawWave();
+  renderRuler();
+  renderSel();
+  renderPlayhead();
+}
+
+let stripKey = '';
+function buildStrip() {
+  const strip = $('strip'), info = S.file;
+  if (!info.video) { strip.textContent = ''; stripKey = ''; return; }
+  const w = strip.clientWidth, h = strip.clientHeight;
+  const aspect = info.video.width / info.video.height || 16 / 9;
+  const n = clamp(Math.round(w / (h * aspect)), 1, 40);
+  const key = `${info.id}:${n}`;
+  if (!w || key === stripKey) return;
+  stripKey = key;
+  strip.textContent = '';
+  const ph = Math.min(360, Math.round(h * (devicePixelRatio || 1)));
+  for (let i = 0; i < n; i++) {
+    const img = el('img');
+    img.alt = '';
+    img.draggable = false;
+    img.onload = () => img.classList.add('loaded');
+    img.src = `/api/frame/${info.id}?t=${(((i + 0.5) * S.dur) / n).toFixed(2)}&h=${ph}`;
+    strip.append(img);
+  }
+}
+
+async function loadWaveform(info) {
+  $('track').classList.toggle('wave-loading', !!info.audio);
+  if (!info.audio) return;
+  try {
+    const { peaks } = await api(`/api/waveform/${info.id}`);
+    if (S.file && S.file.id === info.id) { S.peaks = peaks; drawWave(); }
+  } catch { /* the waveform is just decoration */ }
+  finally { if (S.file && S.file.id === info.id) $('track').classList.remove('wave-loading'); }
+}
+
+function drawWave() {
+  const c = $('wave'), dpr = devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = Math.round(w * dpr);
+  c.height = Math.round(h * dpr);
+  const peaks = S.peaks;
+  if (!peaks || !peaks.length || !w) return;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = S.file.video ? '#5d6475' : '#7a8296';
+  const max = peaks.reduce((a, b) => Math.max(a, b), 0) || 1;
+  const bar = 2, gap = 1, cols = Math.floor(w / (bar + gap));
+  for (let i = 0; i < cols; i++) {
+    const from = Math.floor((i * peaks.length) / cols), to = Math.max(from + 1, Math.floor(((i + 1) * peaks.length) / cols));
+    let v = 0;
+    for (let j = from; j < to; j++) v = Math.max(v, peaks[j]);
+    const bh = Math.max(1, Math.pow(v / max, 0.8) * (h - 4));
+    ctx.fillRect(i * (bar + gap), (h - bh) / 2, bar, bh);
+  }
+}
+
+function renderRuler() {
+  const ruler = $('ruler');
+  ruler.textContent = '';
+  const w = ruler.clientWidth;
+  if (!w || !S.dur) return;
+  const target = S.dur / Math.max(1, Math.floor(w / 80));
+  const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+  const step = steps.find((s) => s >= target) || 7200;
+  const long = S.dur >= 3600;
+  for (let i = 0; i * step <= S.dur + 1e-6; i++) {
+    const t = i * step;
+    if (i > 0 && t / S.dur > 0.97) break;  // would collide with the edge
+    const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
+    const ss = step < 1 ? s.toFixed(1).padStart(4, '0') : String(Math.round(s) % 60).padStart(2, '0');
+    const span = el('span', null, long ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${h * 60 + m}:${ss}`);
+    span.style.left = pct(t);
+    ruler.append(span);
+  }
+}
+
+function timeAt(clientX) {
+  const r = $('track').getBoundingClientRect();
+  return clamp((clientX - r.left) / r.width, 0, 1) * S.dur;
+}
+
+let drag = null;
+$('timeline').addEventListener('pointerdown', (e) => {
+  if (!S.file || e.button !== 0) return;
+  const t = timeAt(e.clientX);
+  const handle = e.target.closest('.handle');
+  if (handle) {
+    const which = handle === $('hStart') ? 'start' : 'end';
+    if (S.media && !S.media.paused) S.media.pause();
+    drag = { kind: which, offset: t - S[which] };
+    seekTo(S[which]);
+  } else if (e.target.closest('.sel')) {
+    // Click inside the selection seeks; dragging it moves the whole selection.
+    drag = { kind: 'maybe-move', x: e.clientX, t0: t, start: S.start, end: S.end };
+  } else if (e.target.closest('.track')) {
+    drag = { kind: 'scrub' };
+    seekTo(t);
+  } else {
+    return;
+  }
+  $('timeline').setPointerCapture(e.pointerId);
+  document.body.classList.add('grabbing');
+  e.preventDefault();
+});
+
+$('timeline').addEventListener('pointermove', (e) => {
+  if (!S.file) return;
+  const t = timeAt(e.clientX);
+  if (drag) {
+    if (drag.kind === 'start') { setStart(t - drag.offset); seekTo(S.start); }
+    else if (drag.kind === 'end') { setEnd(t - drag.offset); seekTo(S.end); }
+    else if (drag.kind === 'scrub') seekTo(t);
+    else if (drag.kind === 'move' || Math.abs(e.clientX - drag.x) > 3) {
+      drag.kind = 'move';
+      const len = drag.end - drag.start;
+      S.start = clamp(drag.start + t - drag.t0, 0, S.dur - len);
+      S.end = S.start + len;
+      renderSel();
+      seekTo(S.start);
+    }
+  }
+  const tipT = drag && drag.kind === 'start' ? S.start : drag && drag.kind === 'end' ? S.end : t;
+  $('tip').textContent = fmt(tipT);
+  $('tip').style.left = pct(tipT);
+  $('tip').hidden = false;
+});
+
+function endDrag() {
+  if (!drag) return;
+  if (drag.kind === 'maybe-move') seekTo(drag.t0);
+  drag = null;
+  document.body.classList.remove('grabbing');
+}
+$('timeline').addEventListener('pointerup', endDrag);
+$('timeline').addEventListener('pointercancel', endDrag);
+$('timeline').addEventListener('pointerleave', () => { if (!drag) $('tip').hidden = true; });
+
+let resizeTimer;
+new ResizeObserver(() => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(layoutTimeline, 120);
+}).observe($('timeline'));
+
+// --- Controls ----------------------------------------------------------------
+
+function bindTimeInput(which) {
+  const input = $(`${which}Input`);
+  input.addEventListener('input', () => { editing[which] = true; });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    else if (e.key === 'Escape') { editing[which] = false; renderSel(); input.blur(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      editing[which] = false;
+      nudge(which, (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 1 : S.step));
+    }
+  });
+  input.addEventListener('change', () => {
+    editing[which] = false;
+    const t = parseTime(input.value);
+    if (t == null) {
+      const box = input.parentElement;
+      box.classList.remove('bad');
+      void box.offsetWidth;  // restart the shake animation
+      box.classList.add('bad');
+      setTimeout(() => box.classList.remove('bad'), 1500);
+      toast('Use a time like 90, 1:30 or 1:02:03.5');
+    } else {
+      if (which === 'start') startAt(t); else endAt(t);
+      seekTo(S[which]);
+    }
+    renderSel();
+  });
+  input.addEventListener('blur', () => { editing[which] = false; renderSel(); });
+}
+bindTimeInput('start');
+bindTimeInput('end');
+
+for (const b of document.querySelectorAll('[data-nudge]')) {
+  b.addEventListener('click', (e) => nudge(b.dataset.nudge, Number(b.dataset.dir) * (e.shiftKey ? 1 : S.step)));
+}
+$('setStartBtn').addEventListener('click', () => startAt(S.time));
+$('setEndBtn').addEventListener('click', () => endAt(S.time));
+$('playBtn').addEventListener('click', togglePlay);
+$('playSelBtn').addEventListener('click', playSelection);
+for (const b of document.querySelectorAll('#modeSeg button')) b.addEventListener('click', () => setMode(b.dataset.mode));
+// Hand focus back to the page after picking an option, so Space plays again.
+$('formatSel').addEventListener('change', () => { S.format = $('formatSel').value; renderSummary(); $('formatSel').blur(); });
+$('fastChk').addEventListener('change', () => $('fastChk').blur());
+$('exportBtn').addEventListener('click', startExport);
+$('pickBtn').addEventListener('click', pick);
+$('openBtn').addEventListener('click', pick);
+$('closeBtn').addEventListener('click', showHome);
+$('pathForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const path = $('pathInput').value.trim().replace(/^['"]|['"]$/g, '');
+  if (path) openPath(path);
+});
+
+// Clicking a button shouldn't leave focus on it, or Space would press it again instead of playing.
+document.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
+
+document.addEventListener('keydown', (e) => {
+  if (!S.file || $('editor').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest('input, select, textarea, button')) return;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  switch (key) {
+    case ' ': togglePlay(); break;
+    case 'i': startAt(S.time); break;
+    case 'o': endAt(S.time); break;
+    case 'ArrowLeft': seekTo(S.time - (e.shiftKey ? S.step : 1)); break;
+    case 'ArrowRight': seekTo(S.time + (e.shiftKey ? S.step : 1)); break;
+    case 'Home': seekTo(0); break;
+    case 'End': seekTo(S.dur); break;
+    default: return;
+  }
+  e.preventDefault();
+});
+
+// Drag and drop: the page only gets the file's name and size, so the server finds it on disk.
+let dragDepth = 0;
+const hasFiles = (e) => !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+window.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  document.body.classList.add('dragging');
+});
+window.addEventListener('dragleave', (e) => {
+  if (!hasFiles(e)) return;
+  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); }
+});
+window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (f) openWith(() => api('/api/locate', { name: f.name, size: f.size, mtime: f.lastModified }));
+});
+
+// --- Export ------------------------------------------------------------------
+
+async function startExport() {
+  if ($('exportBtn').disabled) return;
+  const info = S.file;
+  S.exporting = true;
+  renderSummary();
+  renderJob({ status: 'starting' });
+  try {
+    const job = await api('/api/export', {
+      id: info.id,
+      start: +S.start.toFixed(3),
+      end: +S.end.toFixed(3),
+      mode: S.mode,
+      format: S.format,
+      fast: fastAllowed() && $('fastChk').checked,
+    });
+    S.job = job.id;
+    renderJob(job);
+    pollJob(job.id);
+  } catch (e) {
+    S.exporting = false;
+    renderSummary();
+    renderJob({ status: 'error', error: e.message });
+  }
+}
+
+async function pollJob(id) {
+  while (S.job === id) {
+    await new Promise((r) => setTimeout(r, 300));
+    let job;
+    try { job = await api(`/api/job/${id}`); }
+    catch (e) { job = { status: 'error', error: e.message }; }
+    if (S.job !== id) return;
+    renderJob(job);
+    if (job.status !== 'running') {
+      S.exporting = false;
+      renderSummary();
+      return;
+    }
+  }
+}
+
+function actionBtn(label, onClick, primary) {
+  const b = el('button', `btn small${primary ? ' primary' : ''}`, label);
+  b.type = 'button';
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+let jobKey = '';
+function renderJob(job) {
+  const box = $('job');
+  if (!job) { box.hidden = true; jobKey = ''; return; }
+  box.hidden = false;
+  const running = job.status === 'starting' || job.status === 'running';
+  if (running) {
+    const pctDone = Math.round((job.progress || 0) * 100);
+    $('jobTitle').textContent = job.status === 'starting' ? 'Starting export…' : `Exporting… ${pctDone}%`;
+    $('jobFill').style.width = `${pctDone}%`;
+  }
+  // Progress polls only update the text above; rebuilding the buttons each time would eat clicks.
+  const key = `${job.id}:${job.status}`;
+  if (key === jobKey) return;
+  jobKey = key;
+
+  box.className = `job ${job.status}`;
+  const icon = $('jobIcon'), actions = $('jobActions');
+  actions.textContent = '';
+  $('jobBar').hidden = !running;
+  $('jobSub').textContent = '';
+
+  if (running) {
+    icon.innerHTML = '<div class="spinner"></div>';
+    if (job.name) $('jobSub').textContent = `${job.dir}/${job.name}`;
+    if (job.id) actions.append(actionBtn('Cancel', () => api(`/api/job/${job.id}/cancel`, {}).catch((e) => toast(e.message))));
+  } else if (job.status === 'done') {
+    icon.innerHTML = ICONS.check;
+    $('jobTitle').textContent = `Saved “${job.name}”`;
+    $('jobSub').textContent = `${fmtBytes(job.size || 0)} · in ${job.dir}`;
+    const reveal = (open) => api(`/api/job/${job.id}/reveal`, { open }).catch((e) => toast(e.message));
+    actions.append(
+      actionBtn('Show in Finder', () => reveal(false)),
+      actionBtn('Open', () => reveal(true)),
+      actionBtn('Edit result', () => openPath(job.output)),
+    );
+  } else {
+    const cancelled = job.status === 'cancelled';
+    icon.innerHTML = cancelled ? ICONS.stop : ICONS.alert;
+    $('jobTitle').textContent = cancelled ? 'Export cancelled' : 'Export failed';
+    $('jobSub').textContent = cancelled ? 'The unfinished file was removed.' : job.error || '';
+    actions.append(actionBtn('Dismiss', () => renderJob(null)));
+  }
+  // The box sits below the fold on shorter screens.
+  box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// --- Start -------------------------------------------------------------------
+
+requestAnimationFrame(tick);
+(async () => {
+  const id = new URLSearchParams(location.search).get('file');
+  if (id) {
+    try { loadFile(await api(`/api/file/${id}`)); return; }
+    catch { /* the server restarted since; fall through to the start screen */ }
+  }
+  showHome();
+})();
+</script>
+</body>
+</html>

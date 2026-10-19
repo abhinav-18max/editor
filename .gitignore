@@ -1,0 +1,9 @@
+# Downloaded videos (copyrighted) and everything made from them
+sources/
+out/
+
+# Belongs to another app
+status-cache.json
+
+.DS_Store
+__pycache__/
